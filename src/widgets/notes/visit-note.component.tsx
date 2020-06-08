@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Fragment } from "react";
+import React, { useState, useEffect, useRef, Fragment, Provider } from "react";
 import SummaryCard from "../../ui-components/cards/summary-card.component";
 import styles from "./visit-note.css";
 import {
@@ -6,7 +6,8 @@ import {
   fetchAllProviders,
   fetchDiagnosisByName,
   fetchCurrentSessionData,
-  saveVisitNote
+  saveVisitNote,
+  DiagnosisResult
 } from "./visit-notes.resource";
 import { createErrorHandler } from "@openmrs/esm-error-handling";
 import dayjs from "dayjs";
@@ -20,6 +21,8 @@ import {
   convertToObsPayLoad
 } from "./visit-note.util";
 import { DataCaptureComponentProps } from "../shared-utils";
+import { LocationData, Providers } from "../types";
+import useSessionUser from "../../utils/use-session-user";
 
 const FORM_CONCEPT: string = "c75f120a-04ec-11e3-8780-2b40bef9a44b";
 const ENCOUNTER_TYPE: string = "d7151f82-c1f3-4152-a605-2f9ea7414a79";
@@ -28,15 +31,15 @@ const CLINICIAN_ENCOUNTER_ROLE: string = "240b26f9-dd88-4172-823d-4a8bfeb7841f";
 
 export default function VisitNotes(props: VisitNotesProp) {
   const searchTimeOut = 300;
-  const [locations, setLocations] = useState([]);
-  const [providers, setProviders] = useState([]);
+  const [locations, setLocations] = useState<Array<LocationData>>();
+  const [providers, setProviders] = useState<Array<Providers>>();
   const [visitDate, setVisitDate] = useState(
     dayjs(new Date()).format("YYYY-MM-DD")
   );
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [searchResults, setSearchResults] = useState(null);
+  const [searchResults, setSearchResults] = useState<Array<DiagnosisResult>>();
   const searchTermRef = useRef<HTMLInputElement>();
-  const [currentSession, setCurrentSession] = useState(null);
+  const currentSession = useSessionUser();
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [diagnosisArray, setDiagnosisArray] = useState<diagnosisType[]>([]);
@@ -60,13 +63,6 @@ export default function VisitNotes(props: VisitNotesProp) {
   }, []);
 
   useEffect(() => {
-    const abortController = new AbortController();
-    fetchCurrentSessionData(abortController).then(({ data }) => {
-      setCurrentSession(data);
-    });
-  }, []);
-
-  useEffect(() => {
     if (providers && currentSession) {
       setSelectedProvider(
         providers.find(provider => {
@@ -79,13 +75,12 @@ export default function VisitNotes(props: VisitNotesProp) {
   }, [providers, currentSession]);
 
   useEffect(() => {
-    if (providers && currentSession) {
+    if (providers && currentSession && locations)
       setSelectedLocation(
         locations.find(
           location => location.uuid === currentSession.sessionLocation.uuid
         )
       );
-    }
   }, [locations, currentSession, providers]);
 
   const handleSearchTermChange = debounce(searchterm => {
@@ -95,11 +90,11 @@ export default function VisitNotes(props: VisitNotesProp) {
   useEffect(() => {
     if (searchTerm) {
       fetchDiagnosisByName(searchTerm).subscribe(data => {
-        setSearchResults([]);
+        if (!isEmpty(searchResults)) setSearchResults([]);
         setSearchResults(data);
       });
     }
-  }, [searchTerm]);
+  }, [searchResults, searchTerm]);
 
   useEffect(() => {
     if (isEmpty(searchTerm)) {
@@ -145,8 +140,8 @@ export default function VisitNotes(props: VisitNotesProp) {
     setHasChanged(!hasChanged);
   };
 
-  const handleSubmit = e => {
-    e.preventDefault();
+  const onFormSubmit = (event: React.FormEvent<HTMLFontElement>): void => {
+    event.preventDefault();
     let observation: obs[] = [];
     observation = convertToObsPayLoad(diagnosisArray);
     if (clinicalNote) {
@@ -209,7 +204,7 @@ export default function VisitNotes(props: VisitNotesProp) {
         <form
           className={styles.visitNoteFormContainer}
           autoComplete="off"
-          onSubmit={handleSubmit}
+          onSubmit={() => onFormSubmit}
           onChange={() => {
             setFormChanged(true);
             return props.entryStarted();

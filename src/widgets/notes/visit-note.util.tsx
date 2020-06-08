@@ -40,7 +40,9 @@ export type obs = {
   groubMembers?: [{ concept: string; value?: string | any }];
 };
 
-export function convertToObsPayLoad(diagnosisArray: diagnosisType[]): obs[] {
+export function convertToObsPayLoad(
+  diagnosisArray: Array<diagnosisType>
+): Array<obs> {
   return diagnosisArray.map(diagnosis => {
     if (diagnosis.confirmed == true && diagnosis.primary == true) {
       // confirmed and primary diagnosis

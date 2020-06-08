@@ -99,3 +99,11 @@ type Links = Array<{
   rel: string;
   uri: string;
 }>;
+
+export interface Providers {
+  uuid: string;
+  person: {
+    uuid: string;
+    display: string;
+  };
+}
