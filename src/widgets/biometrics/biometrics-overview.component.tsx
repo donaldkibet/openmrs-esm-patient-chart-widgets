@@ -27,6 +27,9 @@ import {
 } from "@openmrs/esm-framework";
 import { getPatientBiometrics } from "./biometric.resource";
 import { useVitalsSignsConceptMetaData } from "../vitals/vitals-biometrics-form/use-vitalsigns";
+import PatientChartPagination from "../../ui-components/pagination/pagination.component";
+import isEmpty from "lodash-es/isEmpty";
+import chunk from "lodash-es/chunk";
 
 export interface PatientBiometrics {
   id: string;
@@ -52,6 +55,19 @@ const BiometricsOverview: React.FC<BiometricsOverviewProps> = () => {
   const headerTitle = t("biometrics", "Biometrics");
   const [, , , heightUnit, weightUnit] = conceptsUnits;
   const [chartView, setChartView] = React.useState<boolean>();
+  const [pageNumber, setPageNumber] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(5);
+  const [currentPage, setCurrentPage] = React.useState([]);
+
+  function paginate<T>(
+    items: Array<T>,
+    pageNumber: number,
+    itemsPerPage: number
+  ): [Array<T>, Array<Array<T>>] {
+    const allPages = chunk(items, itemsPerPage);
+    const page = allPages[pageNumber - 1] ?? [];
+    return [page, allPages];
+  }
 
   React.useEffect(() => {
     if (patientUuid) {
@@ -70,6 +86,13 @@ const BiometricsOverview: React.FC<BiometricsOverviewProps> = () => {
     }
   }, [patientUuid, config.concepts.weightUuid, config.concepts.heightUuid]);
 
+  React.useEffect(() => {
+    if (!isEmpty(biometrics)) {
+      const [page] = paginate<any>(biometrics, pageNumber, pageSize);
+      setCurrentPage(page);
+    }
+  }, [biometrics, pageNumber, pageSize]);
+
   const tableHeaders = [
     { key: "date", header: "Date" },
     { key: "weight", header: `Weight (${weightUnit})` },
@@ -77,27 +100,25 @@ const BiometricsOverview: React.FC<BiometricsOverviewProps> = () => {
     { key: "bmi", header: `BMI (${bmiUnit})` }
   ];
 
-  const tableRows = biometrics
-    ?.slice(0, showAllBiometrics ? biometrics.length : biometricsToShowCount)
-    ?.map((biometric: PatientBiometrics, index) => {
-      return {
-        id: `${index}`,
-        date: dayjs(biometric.date).format(`DD - MMM - YYYY`),
-        weight: biometric.weight,
-        height: biometric.height,
-        bmi: biometric.bmi
-      };
-    });
-
-  const toggleShowAllBiometrics = () => {
-    setShowAllBiometrics(!showAllBiometrics);
-  };
+  const tableRows = currentPage?.map((biometric: PatientBiometrics, index) => {
+    return {
+      id: `${index}`,
+      date: dayjs(biometric.date).format(`DD - MMM - YYYY`),
+      weight: biometric.weight,
+      height: biometric.height,
+      bmi: biometric.bmi
+    };
+  });
 
   const launchBiometricsForm = () => {
     const url = `/patient/${patientUuid}/vitalsbiometrics/form`;
     switchTo("workspace", url, {
       title: t("recordVitalsAndBiometrics", "Record Vitals and Biometrics")
     });
+  };
+
+  const handlePageChange = ({ page }) => {
+    setPageNumber(page);
   };
 
   const RenderBiometrics: React.FC = () => {
@@ -143,68 +164,53 @@ const BiometricsOverview: React.FC<BiometricsOverviewProps> = () => {
               conceptsUnits={conceptsUnits}
             />
           ) : (
-            <TableContainer>
-              <DataTable
-                rows={tableRows}
-                headers={tableHeaders}
-                isSortable={true}
-                size="short"
-              >
-                {({ rows, headers, getHeaderProps, getTableProps }) => (
-                  <Table {...getTableProps()}>
-                    <TableHead>
-                      <TableRow>
-                        {headers.map(header => (
-                          <TableHeader
-                            className={`${styles.productiveHeading01} ${styles.text02}`}
-                            {...getHeaderProps({
-                              header,
-                              isSortable: header.isSortable
-                            })}
-                          >
-                            {header.header?.content ?? header.header}
-                          </TableHeader>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {rows.map(row => (
-                        <TableRow key={row.id}>
-                          {row.cells.map(cell => (
-                            <TableCell key={cell.id}>
-                              {cell.value?.content ?? cell.value}
-                            </TableCell>
+            <>
+              <TableContainer>
+                <DataTable
+                  rows={tableRows}
+                  headers={tableHeaders}
+                  isSortable={true}
+                  size="short"
+                >
+                  {({ rows, headers, getHeaderProps, getTableProps }) => (
+                    <Table {...getTableProps()}>
+                      <TableHead>
+                        <TableRow>
+                          {headers.map(header => (
+                            <TableHeader
+                              className={`${styles.productiveHeading01} ${styles.text02}`}
+                              {...getHeaderProps({
+                                header,
+                                isSortable: header.isSortable
+                              })}
+                            >
+                              {header.header?.content ?? header.header}
+                            </TableHeader>
                           ))}
                         </TableRow>
-                      ))}
-                      {!showAllBiometrics &&
-                        biometrics.length > biometricsToShowCount && (
-                          <TableRow>
-                            <TableCell colSpan={4}>
-                              <span
-                                style={{
-                                  display: "inline-block",
-                                  margin: "0.45rem 0rem"
-                                }}
-                              >
-                                {`${biometricsToShowCount} / ${biometrics.length}`}{" "}
-                                {t("items", "items")}
-                              </span>
-                              <Button
-                                size="small"
-                                kind="ghost"
-                                onClick={toggleShowAllBiometrics}
-                              >
-                                {t("seeAll", "See all")}
-                              </Button>
-                            </TableCell>
+                      </TableHead>
+                      <TableBody>
+                        {rows.map(row => (
+                          <TableRow key={row.id}>
+                            {row.cells.map(cell => (
+                              <TableCell key={cell.id}>
+                                {cell.value?.content ?? cell.value}
+                              </TableCell>
+                            ))}
                           </TableRow>
-                        )}
-                    </TableBody>
-                  </Table>
-                )}
-              </DataTable>
-            </TableContainer>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </DataTable>
+              </TableContainer>
+              <PatientChartPagination
+                data={biometrics}
+                pageSize={pageSize}
+                onPageNumberChange={handlePageChange}
+                pageNumber={pageNumber}
+              />
+            </>
           )}
         </div>
       );
@@ -220,7 +226,7 @@ const BiometricsOverview: React.FC<BiometricsOverviewProps> = () => {
 
   return (
     <>
-      {tableRows ? (
+      {tableRows?.length > 0 ? (
         <RenderBiometrics />
       ) : error ? (
         <ErrorState error={error} headerTitle={headerTitle} />

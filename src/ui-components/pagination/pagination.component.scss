@@ -1,0 +1,36 @@
+@import "../../root.scss";
+
+.paginationContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background-color: $ui-02;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 3rem;
+}
+
+.paginationLink {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  z-index: 10;
+  position: absolute;
+  background-color: $ui-02;
+  width: 55%;
+  padding-left: 1rem;
+  color: $color-gray-70;
+  @extend .bodyShort01;
+  height: 3rem;
+  margin: 0;
+  border-top: 0.063rem solid $ui-03;
+}
+
+.pagination {
+  border: none;
+  background-color: $ui-02;
+  position: absolute;
+  right: 0;
+  border-top: 0.063rem solid $ui-03;
+}

@@ -166,7 +166,7 @@ const VitalsOverview: React.FC<VitalsOverviewProps> = () => {
                 size="short"
               >
                 {({ rows, headers, getHeaderProps, getTableProps }) => (
-                  <Table {...getTableProps()}>
+                  <Table style={{ tableLayout: "fixed" }} {...getTableProps()}>
                     <TableHead>
                       <TableRow>
                         {headers.map(header => (
